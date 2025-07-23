@@ -1,34 +1,57 @@
-import requests  # lets Python make HTTP requests (to download data from the SEC website)
-
-class SecEdgar:
-    def __init__(self, fileurl):
-        # It takes fileurl (the SEC data URL) as an input and sets up the object.
-        self.fileurl = fileurl  # instance variable that stores the SEC file URL
-        self.namedict = {}      # instance variable is a dictionary you’ll use to look up by company name
-        self.tickerdict = {}    # instance variable you’ll use to look up by ticker symbol
-
-        headers = {
-            'user-agent': 'MLT asse4874@stthomas.edu'
-        }
-
-        # Sends a GET request to the SEC to download the JSON file using the headers above.
-        r = requests.get(self.fileurl, headers=headers)
-
-        # Parses the response as JSON and saves it to filejson
-        self.filejson = r.json()
-
-        # Debugging output (optional)
-        print(r.text)
-        print(self.filejson)
-
-        # Calls another method (defined below) to process the JSON and populate your namedict and tickerdict
-        self.cik_json_to_dict()
-
-    def cik_json_to_dict(self):
-        # This method processes the JSON data and populates the name and ticker dictionaries.
-        # Reset the name and ticker dictionaries to start fresh before filling them.
+# Import the 'requests' library to make HTTP requests (used to fetch data from the SEC)
+import requests
+# Define a class called CIKLookup
+class CIKLookup:
+    # The constructor method: runs automatically when an object of this class is created
+    def __init__(self):
+        # Dictionary to store CIK data using the company name as the key
         self.name_dict = {}
+        # Dictionary to store CIK data using the stock ticker as the key
         self.ticker_dict = {}
+        # URL to the SEC's JSON file that contains the mapping of companies to their CIKs
+        self.url = "https://www.sec.gov/files/company_tickers.json"
+        # Call the helper method to download and store the data
+        self._load_data()
 
-# Run the code
-se = SecEdgar("https://www.sec.gov/files/company_tickers.json")  # Initializes lookup dictionaries 
+    # Private method to download SEC data and populate the dictionaries
+    def _load_data(self):
+        # Send an HTTP GET request to the SEC URL with a custom User-Agent (required by SEC)
+        response = requests.get(
+            self.url,
+            headers={"User-Agent": "MLT Student Contact kidusyosef81@gmail.com"}
+        )
+
+        # If the request fails (not 200 OK), raise an error
+        if response.status_code != 200:
+            raise Exception(f"Failed to fetch data from SEC: {response.status_code}")
+
+        # Parse the JSON response into a Python dictionary
+        data = response.json()
+
+        # Loop through each company's data in the response
+        for entry in data.values():
+            # Convert the CIK number to a string and pad it with leading zeros to be 10 digits
+            cik_str = str(entry["cik_str"]).zfill(10)
+            # Get the company name and convert it to lowercase for consistent lookup
+            name = entry["title"].lower()
+            # Get the ticker symbol and convert it to lowercase for consistent lookup
+            ticker = entry["ticker"].lower()
+
+            # Store the CIK info in name_dict with the lowercase company name as the key
+            self.name_dict[name] = (cik_str, entry["title"], entry["ticker"])
+            # Store the CIK info in ticker_dict with the lowercase ticker as the key
+            self.ticker_dict[ticker] = (cik_str, entry["title"], entry["ticker"])
+
+    # Method to look up a company's CIK using its name
+    def name_to_cik(self, company_name):
+        # Convert the input to lowercase and return the tuple from the name_dict
+        return self.name_dict.get(company_name.lower(), None)
+
+    # Method to look up a company's CIK using its stock ticker
+    def ticker_to_cik(self, ticker):
+        # Convert the input to lowercase and return the tuple from the ticker_dict
+        return self.ticker_dict.get(ticker.lower(), None)
+       
+sec = CIKLookup()
+print(sec.name_to_cik("apple inc."))
+print(sec.ticker_to_cik("msft"))
